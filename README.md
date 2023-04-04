@@ -22,7 +22,7 @@ For Example:
 
 Will Become:
 ```
-/media/hunter/data-slow/Games/ROMs/TestDir
+/ExampleDir
 ├── Gran Turismo 2 (USA) (Arcade Mode) (Rev 1)
 │   ├── Gran Turismo 2 (USA) (Arcade Mode) (Rev 1).bin
 │   └── Gran Turismo 2 (USA) (Arcade Mode) (Rev 1).cue
