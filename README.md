@@ -62,10 +62,22 @@ Will Become:
         └── Final Fantasy IX (USA) (Disc 4) (Rev 1).cue
 ```
 
-## Usage
+### Usage
 `python redump.py /path/to/root [-r]`
 Use `-r` to specify recursive extraction, otherwise only files on the root directory will be managed.
 
 ### Caveats
 * Dependent on `py7zr`
-* I am using `os.walk()` to traverse the directories, but it will traverse through the directories that get made in the extracting process. This is fine for small use cases, but will blow up quickly. **I would not recommend running this script on an entire console library directory.** I may or may not fix this later.
+* I am using `os.walk()` to traverse the directories, but it will traverse through the directories that get made in the extracting process. I may or may not fix this later.
+
+## bincue_to_chd
+Take a directory of bin/cues and convert them the the MAME CHD format. If they are single-disc games, remove the containing folder as they now exist in only one file.
+
+## Usage
+`python bincue_to_chd.py /path/to/root [-r]`
+Use `-r` to specify recursive traversal otherwise only files on the root directory will be managed.
+
+### Caveats
+* `chdman` must be installed. On Ubuntu/Debian, this is included in the `mame-tools` package.
+* Multi-disc games are left in a containing folder, individual disc games have their folders and contents deleted after being made.
+* **Be careful** when applying this to a large directory, as it **will** delete the bin/cues when it is finished compressing.
