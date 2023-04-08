@@ -22,19 +22,24 @@ def parse_directory(directory_base, files):
     target_dir = ""
     for file in files:
         if(".7z" in file):
-            disc_tag = re.search("\(Disc.*\)", file)
-            rev_tag = re.search("\(Rev.*\)", file)
+            disc_tag = re.search("\(Disc.*?\)", file)
+            ext_tag = re.search("\.7z", file)
+            print(f"Disc tag: {disc_tag}")
             if(disc_tag is not None):
                 # Create a directory from the stub of this and then find all other games with this name.
-                target_dir = directory_base / pathlib.Path( file[0 : disc_tag.start() - 1] )# disc_tag.start() - 1 will remove the trailing space.
+                title_preamble = file[0:disc_tag.start() - 1]
+                title_end = file[disc_tag.end() : ext_tag.start()]
+                print(f"Preamble: {title_preamble}\nEnd: {title_end}")
+                title_complete = title_preamble + title_end
+                target_dir = directory_base / pathlib.Path(title_complete) # disc_tag.start() - 1 will remove the trailing space.
 
                 # If the directory doesn't exist, see if there is a directory with the revision name instead.
-                if not os.path.exists( target_dir ) and rev_tag is not None:
-                    target_dir = directory_base / ( pathlib.Path( file[0: disc_tag.start() - 1] + " " + rev_tag.group(0) ))
-                    if(not os.path.exists( target_dir )):
-                        os.mkdir(target_dir)
-                elif(not os.path.exists(target_dir)):
+                # if not os.path.exists( target_dir ) and rev_tag is not None:
+            #     target_dir = directory_base / ( pathlib.Path( file[0: disc_tag.start() - 1] + " " + rev_tag.group(0) ))
+                if(not os.path.exists( target_dir )):
                     os.mkdir(target_dir)
+                # elif(not os.path.exists(target_dir)):
+                #     os.mkdir(target_dir)
             else:
                 # Extract in place.
                 target_dir = directory_base / pathlib.Path( file[0:(file.find(".7z"))] )
