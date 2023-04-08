@@ -25,7 +25,6 @@ def parse_directory(directory_base, files):
             disc_tag = re.search("\(Disc.*\)", file)
             rev_tag = re.search("\(Rev.*\)", file)
             if(disc_tag is not None):
-                print(f"Found multidisc: {file}")
                 # Create a directory from the stub of this and then find all other games with this name.
                 target_dir = directory_base / pathlib.Path( file[0 : disc_tag.start() - 1] )# disc_tag.start() - 1 will remove the trailing space.
 
@@ -37,7 +36,6 @@ def parse_directory(directory_base, files):
                 elif(not os.path.exists(target_dir)):
                     os.mkdir(target_dir)
             else:
-                print(f"found single disc: {file}")
                 # Extract in place.
                 target_dir = directory_base / pathlib.Path( file[0:(file.find(".7z"))] )
                 if not os.path.exists(target_dir):
@@ -45,9 +43,7 @@ def parse_directory(directory_base, files):
             
             # Check if this has already been handled previously
             cue_name = file[0:file.find(".7z")] + ".cue"
-            print(f"File stem: {cue_name}")
             cue_file = target_dir / pathlib.Path( cue_name )
-            print(f"Target cue file is: {cue_file}")
             if(not os.path.exists( cue_file )):
                 print(f"Extracting {file} to {target_dir}")
                 try:
@@ -72,4 +68,6 @@ for root, dirs, files in os.walk(args.path):
         # It's not the end of the world, because we check for a 7z extension, but it would be good to fix this.
         if(files is not []):
             parse_directory(pathlib.Path(root), files)
-print(f"Failed to extract {bad_files}")
+
+if(bad_files is not []):
+    print(f"Failed to extract {bad_files}")
