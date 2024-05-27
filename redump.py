@@ -12,67 +12,100 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument('-r', '--recursive', action = 'store_true')
+parser.add_argument('-y', '--skip-check', action='store_true')
 parser.add_argument('path')
 args = parser.parse_args()
 
 
+def parse_file(file):
+    # Fetch relevant details about this title.
+    disc_tag = re.search("\s\(Disc.*?\)", file.name)
+    cue_name = file.stem + ".cue"
+    cue_file = pathlib.Path( cue_name )
+    target_dir = pathlib.Path(file.parent, file.stem)
+    # print(f"Cue file is {cue_file}")
 
-def parse_directory(directory_base, files):
-    bad_files = []
-    target_dir = ""
-    for file in files:
-        if(".7z" in file):
-            disc_tag = re.search("\(Disc.*?\)", file)
-            ext_tag = re.search("\.7z", file)
-            print(f"Disc tag: {disc_tag}")
-            if(disc_tag is not None):
-                # Create a directory from the stub of this and then find all other games with this name.
-                title_preamble = file[0:disc_tag.start() - 1]
-                title_end = file[disc_tag.end() : ext_tag.start()]
-                print(f"Preamble: {title_preamble}\nEnd: {title_end}")
-                title_complete = title_preamble + title_end
-                target_dir = directory_base / pathlib.Path(title_complete) # disc_tag.start() - 1 will remove the trailing space.
 
-                # If the directory doesn't exist, see if there is a directory with the revision name instead.
-                # if not os.path.exists( target_dir ) and rev_tag is not None:
-            #     target_dir = directory_base / ( pathlib.Path( file[0: disc_tag.start() - 1] + " " + rev_tag.group(0) ))
-                if(not os.path.exists( target_dir )):
-                    os.mkdir(target_dir)
-                # elif(not os.path.exists(target_dir)):
-                #     os.mkdir(target_dir)
-            else:
-                # Extract in place.
-                target_dir = directory_base / pathlib.Path( file[0:(file.find(".7z"))] )
-                if not os.path.exists(target_dir):
-                    os.mkdir(target_dir)
-            
-            # Check if this has already been handled previously
-            cue_name = file[0:file.find(".7z")] + ".cue"
-            cue_file = target_dir / pathlib.Path( cue_name )
-            if(not os.path.exists( cue_file )):
-                print(f"Extracting {file} to {target_dir}")
-                try:
-                    with py7zr.SevenZipFile(directory_base / pathlib.Path(file), 'r') as archive:
-                        archive.extractall(path = target_dir)
-                except:
-                    print(f"Failed to extract {file}")
-                    bad_files.append(file)
-                     
-            else:
-                print(f"{file} has already been extracted. Skipping...")
+    if(disc_tag is not None):
+        #print(f"Found multidisc game!")
+        # Create a directory from the stub of this and then find all other games with this name.
+        # This works because the Disc tag is always the last one in the name, so this will capture all revisions neatly.
+        #print(f"Game name is {file.name[0:disc_tag.start()]}")
+        playlist_file = pathlib.Path( file.name[0:disc_tag.start()] + ".m3u")
 
-for root, dirs, files in os.walk(args.path):
-    bad_files = []
-    target_dir = ""
-    if(not args.recursive):
-        print("Only operating on root directory")
-        parse_directory(pathlib.Path(root), files)
-        break
+        target_dir = pathlib.Path( file.parent, file.name[0:disc_tag.start()] )
+
+        # If this is Disc 1 of a game, check if there is already an m3u and delete if so.
+        if("1" in disc_tag.string):
+            if os.path.exists(target_dir):
+                if os.path.isfile(pathlib.Path(target_dir, playlist_file)):
+                    os.remove(pathlib.Path(target_dir, playlist_file))
+
+        # If the directory doesn't exist, make it.
+        if(not os.path.exists( target_dir )):
+            os.mkdir(target_dir)
+
+        # Append this file's .cue into the .m3u for a multidisc game.
+        with open (pathlib.Path(target_dir, playlist_file), "a") as multidisc_tracks:
+            multidisc_tracks.write(str(cue_file) + "\n")
+
     else:
-        # FIXME: We will recursively walk through all of the directories we make in this process as well.
-        # It's not the end of the world, because we check for a 7z extension, but it would be good to fix this.
-        if(files is not []):
-            parse_directory(pathlib.Path(root), files)
+        if not os.path.exists(target_dir):
+            os.mkdir(target_dir)
+    
+    # Check if this has already been handled previously
+    print(f"Extracting {file} to {target_dir}")
+    try:
+        with py7zr.SevenZipFile(pathlib.Path(file), 'r') as archive:
+            archive.extractall(path = target_dir)
+    
+    except KeyboardInterrupt:
+        print("Cancelled operation.")
+        os.remove(target_dir)
+        exit(0)
+    
+    except:
+        print(f"Failed to extract {file}")
+        bad_files.append(file)
 
-if(bad_files is not []):
-    print(f"Failed to extract {bad_files}")
+# Iterate through the paths the user pointed to and construct a list of paths.
+def assemble_archives():
+    files_to_parse = []
+
+    filepath = pathlib.Path(args.path)
+    if args.recursive: 
+        for file in sorted(list(filepath.rglob("*.7z"))):
+            files_to_parse.append(file)
+    
+    else:
+        for file in sorted(list(pathlib.Path(args.path).glob("*.7z"))):
+            files_to_parse.append(file)
+
+    return files_to_parse
+
+def parse(files):
+    for index, file in enumerate(files):
+        print(f"Processing {file}: {index+1}/{files.__len__()}")
+        parse_file(file)
+
+bad_files = []
+print("Will operate on: ")
+files_to_parse = assemble_archives()
+for file in files_to_parse:
+    print(str(file))
+
+if(not args.skip_check):
+    user_checked = input("Does this look correct (Y/n)?: ")
+    if user_checked != "n" and user_checked != "N":
+        print("OK")
+        parse(files_to_parse)
+        # do stuff
+    else:
+        print("Cancelling.")
+else:
+    # do stuff
+    print("OK")
+
+
+# if(bad_files is not []):
+#     print(f"Failed to extract {bad_files}")
